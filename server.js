@@ -146,7 +146,7 @@ app.get('/update',function(req,res){
 					else if(score>rows[0].SCORE) {
 
 						// console.log("New high score");
-						connection.query('UPDATE USER SET SCORE=?, DATEE=? WHERE ID=?', [score,id,date],
+						connection.query('UPDATE USER SET SCORE=?, DATEE=? WHERE ID=?', [score,date,id],
 
 							function(err, rows, fields) {
 								if (err){
