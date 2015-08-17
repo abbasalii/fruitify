@@ -1,16 +1,17 @@
 var PORT = process.env.PORT;
+// var PORT = 8080;
 
 var mysql 	= require('mysql');
 var express = require('express');
 var fs 		= require('fs');
 var url 	= require('url');
 var pool 	=    mysql.createPool({
-    connectionLimit : 100, //important
-    host     : '85.10.205.173',
+    connectionLimit : 4, //important
+    host     : '207.46.136.162',
     port 	 : 3306,
-    user     : 'codistan',
-    password : 'lionking',
-    database : 'fruitifydb',
+    user     : 'b074863ba4f1e5',
+    password : 'c4306926',
+    database : 'Fruitify',
     debug    :  false
 });
 
@@ -21,38 +22,37 @@ app.get('/new',function(req,res){
 
 	var id = req.query.id;
 	var name = req.query.name;
-	var email = req.query.email;
-
-	// console.log("ID: "+id);
-	// console.log("NAME: "+name);
-	// console.log("EMAIL: "+email);
 
 	pool.getConnection(function(err,connection){
 
 		if (err) {
 			// console.log("Failed to connect to the database");
-			res.end("Failed to connect to the database");
+			res.status(503);
+			res.end();
 			return;
 		}
 
-		connection.query('SELECT SCORE FROM USER WHERE ID=?', [id],
+		connection.query('SELECT SCORE FROM user WHERE ID=?', [id],
 			function(err,rows,fields) {
 				if(err){
 					// console.log("Failed to fetch previous score");
 					connection.release();
-					res.end("Failed to fetch previous score");
+					res.status(503);
+					res.end();
 				}
 				else if(rows.length==0){
 
-					console.log("no previous record exists");
-					connection.query('INSERT INTO USER (ID, NAME, EMAIL) VALUES(?,?,?)', [id,name,email],
+					// console.log("no previous record exists");
+					connection.query('INSERT INTO user (ID, NAME) VALUES(?,?)', [id,name],
 
 						function(err, rows, fields) {
 							if (err){
-								console.log("Failed to create new user");
+								// console.log("Failed to create new user");
+								res.status(503);
+								res.end();
 							}
 							else{
-								console.log("User created with ID: "+id);
+								// console.log("User created with ID: "+id);
 								res.end(JSON.stringify({SCORE:0}));
 							}
 							connection.release();
@@ -70,7 +70,8 @@ app.get('/new',function(req,res){
 
 		connection.on('error', function(err) {
 			// console.log("Error occurred while performing database operation");
-			res.end("Error occurred while performing database operation");
+			res.status(503);
+			res.end();
         });
 	});
 });
@@ -79,40 +80,42 @@ app.get('/update',function(req,res){
 
 	var id = req.query.id;
 	var score = req.query.score;
-
-	// console.log("ID: "+id);
-	// console.log("SCORE: "+score);
+	var date = new Date();
 
 	pool.getConnection(function(err,connection){
 
 		if (err) {
 			// console.log("Failed to connect to the database");
-			res.end("Failed to connect to the database");
+			res.status(503);
+			res.end();
 			return;
 		}
 
-		var getHighscore = function(sc,da){
+		var getHighscore = function(){
 
 			var result = {};
 			connection.query('SELECT NAME, SCORE FROM USER WHERE SCORE IS NOT NULL ORDER BY SCORE DESC, DATEE LIMIT 10',
 				function(err,rows,fields) {
 					if(err){
-						console.log("Failed to fetch top 10 scores");
+						// console.log("Failed to fetch top 10 scores");
 						connection.release();
+						res.status(503);
+						res.end();
 					}
 					else{
-						console.log("Fetched top ten results successfully");
+						// console.log("Fetched top ten results successfully");
 						result['users'] = rows;
 						var query = 'SELECT SCORE FROM USER WHERE SCORE>? OR (SCORE=? AND DATEE<?)';
-						var values = [sc,sc,da];
+						var values = [score,score,date];
 
 						connection.query(query,values,
 							function(err,rows,fields) {
 								if(err) {
-									console.log("Failed to calculate rank");
+									// console.log("Failed to calculate rank");
+									res.status(503);
+									res.end();
 								}
 								else {
-									console.log("Yo mayn B-)");
 									result['rank'] = rows.length+1;
 									res.end(JSON.stringify(result));
 								}
@@ -131,34 +134,37 @@ app.get('/update',function(req,res){
 				if (err){
 					connection.release();
 					// console.log("Failed to get previous score");
-					res.end("Failed to get previous score");
+					res.status(503);
+					res.end();
 				}
 				else{
 					if(rows.length==0) {
-						res.end("No record exist against this id");
 						connection.release();
+						res.status(503);
+						res.end();
 					}
 					else if(score>rows[0].SCORE) {
 
-						console.log("New high score");
-						var date = new Date();
-						connection.query('UPDATE USER SET SCORE=?, DATEE=NOW() WHERE ID=?', [score,id],
+						// console.log("New high score");
+						connection.query('UPDATE USER SET SCORE=?, DATEE=? WHERE ID=?', [score,id,date],
 
 							function(err, rows, fields) {
 								if (err){
 									connection.release();
-									console.log("Failed to update score");
+									res.status(503);
+									res.end();
+									// console.log("Failed to update score");
 								}
 								else{
-									console.log("Score updated for user ID: "+id);
-									getHighscore(score,date);
+									// console.log("Score updated for user ID: "+id);
+									getHighscore();
 								}
 							}
 						);
 					}
 					else{
-						console.log("No new high score");
-						getHighscore(rows[0].SCORE,rows[0].DATEE);
+						// console.log("No new high score");
+						getHighscore();
 					}
 				}
 			}
@@ -166,11 +172,12 @@ app.get('/update',function(req,res){
 
 		connection.on('error', function(err) {
 			// console.log("Error occurred while performing database operation");
-			res.end("Error occurred while performing database operation");
+			res.status(503);
+			res.end();
         });
 	});
 });
 
 app.listen(PORT,function(){
-	console.log("Listening at " + PORT);
+	// console.log("Listening at " + PORT);
 });
