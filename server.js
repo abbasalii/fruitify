@@ -178,6 +178,40 @@ app.get('/update',function(req,res){
 	});
 });
 
+app.get('/leaderboard',function(req,res){
+
+
+	pool.getConnection(function(err,connection){
+
+		if (err) {
+			// console.log("Failed to connect to the database");
+			res.status(503);
+			res.end();
+			return;
+		}
+
+
+		connection.query('SELECT NAME, SCORE FROM USER WHERE SCORE IS NOT NULL ORDER BY SCORE DESC, DATEE LIMIT 10',
+			function(err,rows,fields) {
+				if(err){
+					res.status(503);
+					res.end();
+				}
+				else{
+					res.end(JSON.stringify(rows));	
+				}
+				connection.release();
+			}
+		);
+
+		connection.on('error', function(err) {
+			// console.log("Error occurred while performing database operation");
+			res.status(503);
+			res.end();
+        });
+	});
+});
+
 app.listen(PORT,function(){
 	// console.log("Listening at " + PORT);
 });
