@@ -43,7 +43,7 @@ app.get('/new',function(req,res){
 				else if(rows.length==0){
 
 					// console.log("no previous record exists");
-					connection.query('INSERT INTO user (ID, NAME) VALUES(?,?)', [id,name],
+					connection.query('INSERT INTO user (ID, NAME, SCORE) VALUES(?,?,?)', [id,name,0],
 
 						function(err, rows, fields) {
 							if (err){
@@ -180,6 +180,7 @@ app.get('/update',function(req,res){
 
 app.get('/leaderboard',function(req,res){
 
+	var id = req.query.id;
 
 	pool.getConnection(function(err,connection){
 
@@ -194,13 +195,52 @@ app.get('/leaderboard',function(req,res){
 		connection.query('SELECT NAME, SCORE FROM USER WHERE SCORE IS NOT NULL ORDER BY SCORE DESC, DATEE LIMIT 10',
 			function(err,rows,fields) {
 				if(err){
+					connection.release();
 					res.status(503);
 					res.end();
 				}
 				else{
-					res.end(JSON.stringify(rows));	
+					var result = {};
+					result['users'] = rows;
+					// res.end(JSON.stringify(rows));
+					var query = 'SELECT SCORE, DATEE FROM user WHERE ID=?';
+
+						connection.query(query,[id],
+							function(err,rows,fields) {
+								if(err) {
+									connection.release();
+									res.status(503);
+									res.end();
+								}
+								else if(rows.length==0){
+									connection.release();
+									res.status(503);
+									res.end();
+								}
+								else {
+									result['score'] = rows[0].SCORE;
+									
+
+									var query = 'SELECT SCORE FROM USER WHERE SCORE>? OR (SCORE=? AND DATEE<?)';
+									connection.query(query,[rows[0].SCORE,rows[0].SCORE,rows[0].DATEE],
+										function(err,rows,fields) {
+											if(err){
+												res.status(503);
+												res.end();
+											}
+											else{
+												result['rank'] = rows.length+1;
+												res.end(JSON.stringify(result));
+											}
+											connection.release();
+										}
+									);
+								}
+								
+							}
+						);
 				}
-				connection.release();
+				
 			}
 		);
 
